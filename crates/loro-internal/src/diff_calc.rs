@@ -797,7 +797,9 @@ impl DiffCalculatorTrait for ListDiffCalculator {
         let (mut retreat, _) = info.from_vv.diff_iter(info.to_vv);
         let has_retreat = retreat.next().is_some();
         let should_rebuild = matches!(idx.get_type(), crate::ContainerType::List)
-            && (has_retreat || info.replay_base_vv != info.from_vv || self.source_not_in_op_context);
+            && (has_retreat
+                || info.replay_base_vv != info.from_vv
+                || self.source_not_in_op_context);
         let diff_items = if should_rebuild {
             let mut merged = info.from_vv.clone();
             merged.merge(info.to_vv);
@@ -1868,7 +1870,8 @@ impl DiffCalculatorTrait for MovableListDiffCalculator {
     ) -> (InternalDiff, DiffMode) {
         let (mut retreat, _) = info.from_vv.diff_iter(info.to_vv);
         let has_retreat = retreat.next().is_some();
-        if has_retreat || info.replay_base_vv != info.from_vv || self.list.source_not_in_op_context {
+        if has_retreat || info.replay_base_vv != info.from_vv || self.list.source_not_in_op_context
+        {
             let mut merged = info.from_vv.clone();
             merged.merge(info.to_vv);
             self.rebuild_full_tracker(idx, oplog, &merged);
@@ -2237,7 +2240,10 @@ fn conservative_replay_only_builds_calculators_for_changed_containers() {
     let oplog = target.oplog().lock();
     let (replay_base, mode, _) =
         oplog.iter_from_replay_base_causally(&before, &before_frontiers, &after, &after_frontiers);
-    assert_ne!(replay_base, before, "the fixture must exercise conservative replay");
+    assert_ne!(
+        replay_base, before,
+        "the fixture must exercise conservative replay"
+    );
     assert_eq!(mode, DiffMode::Import);
     assert_eq!(
         changed_containers_between(&oplog, &before, &after),
@@ -2291,7 +2297,10 @@ fn conservative_checkout_replay_filters_to_retreat_changed_containers() {
     let oplog = target.oplog().lock();
     let (replay_base, mode, _) =
         oplog.iter_from_replay_base_causally(&before, &before_frontiers, &after, &after_frontiers);
-    assert_ne!(replay_base, before, "the fixture must exercise conservative replay");
+    assert_ne!(
+        replay_base, before,
+        "the fixture must exercise conservative replay"
+    );
     assert_eq!(mode, DiffMode::Checkout);
     assert_eq!(
         changed_containers_between(&oplog, &before, &after),
