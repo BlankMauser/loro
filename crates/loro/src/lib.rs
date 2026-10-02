@@ -56,6 +56,7 @@ pub use loro_internal::encoding::ImportBlobMetadata;
 pub use loro_internal::encoding::{EncodedBlobMode, ExportMode};
 pub use loro_internal::event::{EventTriggerKind, Index};
 pub use loro_internal::handler::TextDelta;
+pub use loro_internal::handler::TextHistorySpan;
 pub use loro_internal::json;
 pub use loro_internal::json::{
     FutureOp as JsonFutureOp, FutureOpWrapper as JsonFutureOpWrapper, JsonChange, JsonOp,
@@ -2817,6 +2818,47 @@ impl LoroText {
     /// Whether the text container is deleted.
     pub fn is_deleted(&self) -> bool {
         self.handler.is_deleted()
+    }
+
+    /// Every character this text has ever held, deleted ones included, in
+    /// the container's Fugue order, as runs of [`TextHistorySpan`].
+    ///
+    /// Fugue keeps one total order over all inserted characters; the text
+    /// at any version is the subsequence of characters inserted and not yet
+    /// deleted at it. Deleted characters sit where they were, the runs that
+    /// are not deleted concatenate to the current text, and replicas with the
+    /// same history return the same runs. A caller can filter the order by
+    /// its own rule, such as "inserted and not deleted by these changes",
+    /// without building a document for it.
+    ///
+    /// It is read-only, reads committed history only (commit a pending
+    /// transaction first), and replays this container's operations once, so
+    /// it costs about as much as checking out from the empty version. The
+    /// `deleted` flag is relative to the oplog's latest version, not to a
+    /// detached checkout. Style anchors are not characters and are left out.
+    ///
+    /// Errors for a detached container (no history) and for a shallow
+    /// document (its history before the shallow root is gone).
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use loro::LoroDoc;
+    /// let doc = LoroDoc::new();
+    /// doc.set_peer_id(1).unwrap();
+    /// let text = doc.get_text("text");
+    /// text.insert(0, "abc").unwrap();
+    /// text.delete(1, 1).unwrap();
+    /// doc.commit();
+    /// let runs = text.history_order().unwrap();
+    /// let all: String = runs.iter().map(|r| r.text.as_str()).collect();
+    /// assert_eq!(all, "abc");
+    /// let visible: String = runs.iter().filter(|r| !r.deleted).map(|r| r.text.as_str()).collect();
+    /// assert_eq!(visible, "ac");
+    /// assert!(runs.iter().any(|r| r.deleted && r.text == "b" && r.id == loro::ID::new(1, 1)));
+    /// ```
+    pub fn history_order(&self) -> LoroResult<Vec<TextHistorySpan>> {
+        self.handler.history_order()
     }
 
     /// Convert a position between coordinate systems (Unicode, UTF-16, UTF-8 bytes, Event).
