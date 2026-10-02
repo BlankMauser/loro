@@ -554,6 +554,20 @@ impl std::fmt::Debug for TextHandler {
     }
 }
 
+/// A run of characters from a text container's history, in Fugue order: see
+/// [`TextHandler::history_order`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TextHistorySpan {
+    /// The ID of the run's first character. The run's characters have
+    /// consecutive counters on this peer, in order.
+    pub id: ID,
+    /// The run's characters, as inserted.
+    pub text: String,
+    /// Whether the run is deleted at the document's latest known version
+    /// (its oplog version), which a detached checkout does not change.
+    pub deleted: bool,
+}
+
 #[derive(Debug, Clone, EnumAsInner, Deserialize, Serialize, PartialEq)]
 #[serde(untagged)]
 pub enum TextDelta {
@@ -1605,6 +1619,62 @@ impl From<LoroValue> for ValueOrHandler {
 }
 
 impl TextHandler {
+    /// Every character this text container has ever held, deleted ones
+    /// included, in the container's Fugue order: one total order over all
+    /// inserted characters, from which the text at any version is the
+    /// subsequence of characters inserted but not yet deleted at it. Deleted
+    /// characters sit where they were; the visible text is the concatenation
+    /// of the runs that are not deleted. Replicas with the same history return
+    /// the same runs.
+    ///
+    /// Reads the committed history only (commit a pending transaction first)
+    /// and replays this container's ops once, so it costs about a checkout
+    /// from the empty version. Adjacent characters with consecutive IDs and
+    /// the same status share a run. Style anchors are not characters and are
+    /// left out.
+    ///
+    /// Returns an error for a detached container, which has no history, and
+    /// for a shallow document, whose history before the shallow root is gone.
+    pub fn history_order(&self) -> LoroResult<Vec<TextHistorySpan>> {
+        let MaybeDetached::Attached(a) = &self.inner else {
+            return Err(LoroError::MisuseDetachedContainer {
+                method: "history_order",
+            });
+        };
+        let oplog = a.doc.oplog().lock();
+        if !oplog.shallow_since_vv().is_empty() {
+            return Err(LoroError::NotImplemented(
+                "history_order on a shallow document",
+            ));
+        }
+        let runs = crate::diff_calc::text_history_runs(a.container_idx, &oplog, oplog.vv());
+        let mut spans: Vec<TextHistorySpan> = Vec::with_capacity(runs.len());
+        // The counter just past the last span's final character.
+        let mut last_end: loro_common::Counter = 0;
+        for (id, range, deleted) in runs {
+            let range = range.start as usize..range.end as usize;
+            let end = id.counter + range.len() as loro_common::Counter;
+            match spans.last_mut() {
+                Some(last)
+                    if last.deleted == deleted
+                        && last.id.peer == id.peer
+                        && last_end == id.counter =>
+                {
+                    oplog
+                        .arena
+                        .with_text_slice(range, |s| last.text.push_str(s));
+                }
+                _ => spans.push(TextHistorySpan {
+                    id,
+                    text: oplog.arena.slice_str_by_unicode_range(range),
+                    deleted,
+                }),
+            }
+            last_end = end;
+        }
+        Ok(spans)
+    }
+
     /// Create a new container that is detached from the document.
     ///
     /// The edits on a detached container will not be persisted.

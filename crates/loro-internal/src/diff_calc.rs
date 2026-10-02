@@ -1606,6 +1606,25 @@ impl RichtextDiffCalculator {
     }
 }
 
+/// Every text character ever inserted into the text container `idx` up to
+/// `vv`, in Fugue order, as runs of `(first id, Unicode range in the oplog's
+/// string arena, deleted at vv)`.
+///
+/// This replays the container's ops once into a fresh tracker, the same one
+/// a checkout from the empty version builds, so the order is the one every
+/// replica with this history derives. The caller must refuse shallow docs:
+/// their history before the shallow root is not available.
+pub(crate) fn text_history_runs(
+    idx: ContainerIdx,
+    oplog: &OpLog,
+    vv: &VersionVector,
+) -> Vec<(ID, std::ops::Range<u32>, bool)> {
+    debug_assert!(oplog.shallow_since_vv().is_empty());
+    let (mut tracker, _) = RichtextDiffCalculator::build_full_crdt_tracker(idx, oplog, vv);
+    tracker.checkout(vv);
+    tracker.text_runs_in_order().collect()
+}
+
 impl DiffCalculatorTrait for RichtextDiffCalculator {
     fn start_tracking(
         &mut self,

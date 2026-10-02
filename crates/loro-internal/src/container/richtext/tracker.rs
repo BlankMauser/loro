@@ -14,7 +14,7 @@ use self::{crdt_rope::CrdtRope, id_to_cursor::IdToCursor};
 
 use super::{
     fugue_span::{FugueSpan, Status},
-    RichtextChunk,
+    RichtextChunk, RichtextChunkValue,
 };
 
 mod crdt_rope;
@@ -717,6 +717,30 @@ impl Tracker {
         }
 
         ans
+    }
+
+    /// The text runs of the rope in document (Fugue) order: the real id of each
+    /// run's first character, its Unicode range in the oplog's string arena,
+    /// and whether it is deleted at the current version.
+    ///
+    /// Style anchors, move anchors, the unknown placeholder and spans from a
+    /// future version are skipped.
+    pub(crate) fn text_runs_in_order(
+        &self,
+    ) -> impl Iterator<Item = (ID, std::ops::Range<u32>, bool)> + '_ {
+        self.rope.tree().iter().filter_map(|span| {
+            if span.status.future {
+                return None;
+            }
+            let RichtextChunkValue::Text(range) = span.content.value() else {
+                return None;
+            };
+            let id = span.real_id();
+            if id.peer == UNKNOWN_PEER_ID {
+                return None;
+            }
+            Some((id, range, span.status.delete_times != 0))
+        })
     }
 
     pub(crate) fn mark_shallow_root_applied(&mut self, vv: &VersionVector) {
