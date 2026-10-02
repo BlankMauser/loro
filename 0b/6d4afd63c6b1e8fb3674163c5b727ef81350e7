@@ -1,0 +1,29 @@
+crates/loro/tests/text_history_order.rs
+  s_2b29451c572701::t_fa7cd594c669c1 1-251
+crates/loro-internal/src/diff_calc.rs
+  s_2b29451c572701::t_302bad3350253c 1515-1533
+plans/20261002-text-history-order.md
+  s_2b29451c572701::t_e2fed4cb5b93bd 1-91
+crates/loro-internal/src/container/richtext/tracker.rs
+  s_2b29451c572701::t_fcc443b3414954 17,706-729
+crates/loro-internal/src/handler.rs
+  s_2b29451c572701::t_c0e0dedd363c26 440-453,1497-1552
+crates/loro/src/lib.rs
+  s_2b29451c572701::t_069937f32ffbb1 59,2823-2863
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0b6d4afd63c6b1e8fb3674163c5b727ef81350e7",
+  "prompts": {},
+  "sessions": {
+    "s_2b29451c572701": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4606ede8-7740-4884-bee2-4693d0035be4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "BlankMauser <thomasluvan@gmail.com>"
+    }
+  }
+}
