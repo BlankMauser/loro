@@ -289,6 +289,38 @@ impl DiffBatch {
         }
     }
 
+    /// Transforms this batch so it applies after `other`, a batch made
+    /// concurrently on the same base version (the operation `UndoManager`
+    /// uses to move an undo past later edits). `left_priority` decides ties
+    /// at the same position: true keeps this batch's insertions first.
+    ///
+    /// ```
+    /// use loro::LoroDoc;
+    /// let doc = LoroDoc::new();
+    /// let text = doc.get_text("t");
+    /// text.insert(0, "abc").unwrap();
+    /// doc.commit();
+    /// let base = doc.state_frontiers();
+    /// text.insert(3, "!").unwrap();
+    /// doc.commit();
+    /// let edited = doc.state_frontiers();
+    /// // The inverse of the "!" insertion, made at `edited`.
+    /// let mut undo = doc.diff(&edited, &base).unwrap();
+    /// // Someone then types at the front.
+    /// text.insert(0, ">").unwrap();
+    /// doc.commit();
+    /// let since = doc.diff(&edited, &doc.state_frontiers()).unwrap();
+    /// undo.transform(&since, true);
+    /// doc.apply_diff(undo).unwrap();
+    /// assert_eq!(text.to_string(), ">abc");
+    /// ```
+    pub fn transform(&mut self, other: &Self, left_priority: bool) {
+        let mut inner: InnerDiffBatch = std::mem::take(self).into();
+        let other: InnerDiffBatch = other.clone().into();
+        inner.transform(&other, left_priority);
+        *self = inner.into();
+    }
+
     pub(crate) fn validate_for_apply(&self) -> LoroResult<()> {
         for (_, diff) in self.iter() {
             validate_diff_for_apply(diff)?;
