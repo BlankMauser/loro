@@ -1651,24 +1651,17 @@ impl TextHandler {
         let mut spans: Vec<TextHistorySpan> = Vec::with_capacity(runs.len());
         // The counter just past the last span's final character.
         let mut last_end: loro_common::Counter = 0;
-        for (id, range, deleted) in runs {
-            let range = range.start as usize..range.end as usize;
-            let end = id.counter + range.len() as loro_common::Counter;
+        for (id, text, deleted) in runs {
+            let end = id.counter + text.chars().count() as loro_common::Counter;
             match spans.last_mut() {
                 Some(last)
                     if last.deleted == deleted
                         && last.id.peer == id.peer
                         && last_end == id.counter =>
                 {
-                    oplog
-                        .arena
-                        .with_text_slice(range, |s| last.text.push_str(s));
+                    last.text.push_str(&text);
                 }
-                _ => spans.push(TextHistorySpan {
-                    id,
-                    text: oplog.arena.slice_str_by_unicode_range(range),
-                    deleted,
-                }),
+                _ => spans.push(TextHistorySpan { id, text, deleted }),
             }
             last_end = end;
         }

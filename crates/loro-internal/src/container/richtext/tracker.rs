@@ -720,7 +720,7 @@ impl Tracker {
     }
 
     /// The text runs of the rope in document (Fugue) order: the real id of each
-    /// run's first character, its Unicode range in the oplog's string arena,
+    /// run's first character, its Unicode range in the tracker's text table,
     /// and whether it is deleted at the current version.
     ///
     /// Style anchors, move anchors, the unknown placeholder and spans from a

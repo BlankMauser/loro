@@ -1607,22 +1607,32 @@ impl RichtextDiffCalculator {
 }
 
 /// Every text character ever inserted into the text container `idx` up to
-/// `vv`, in Fugue order, as runs of `(first id, Unicode range in the oplog's
-/// string arena, deleted at vv)`.
+/// `vv`, in Fugue order, as runs of `(first id, text, deleted at vv)`.
 ///
 /// This replays the container's ops once into a fresh tracker, the same one
 /// a checkout from the empty version builds, so the order is the one every
-/// replica with this history derives. The caller must refuse shallow docs:
-/// their history before the shallow root is not available.
+/// replica with this history derives. The tracker's text lives in its own
+/// [`TrackerTexts`], not in the oplog's string arena, so the runs carry their
+/// text. The caller must refuse shallow docs: their history before the
+/// shallow root is not available.
 pub(crate) fn text_history_runs(
     idx: ContainerIdx,
     oplog: &OpLog,
     vv: &VersionVector,
-) -> Vec<(ID, std::ops::Range<u32>, bool)> {
+) -> Vec<(ID, String, bool)> {
     debug_assert!(oplog.shallow_since_vv().is_empty());
-    let (mut tracker, _) = RichtextDiffCalculator::build_full_crdt_tracker(idx, oplog, vv);
+    let (mut tracker, _, texts) = RichtextDiffCalculator::build_full_crdt_tracker(idx, oplog, vv);
     tracker.checkout(vv);
-    tracker.text_runs_in_order().collect()
+    tracker
+        .text_runs_in_order()
+        .map(|(id, range, deleted)| {
+            let mut text = String::with_capacity(range.len());
+            texts.for_each_slice(range, |_, slice| {
+                text.push_str(std::str::from_utf8(&slice).expect("text op content is UTF-8"))
+            });
+            (id, text, deleted)
+        })
+        .collect()
 }
 
 impl DiffCalculatorTrait for RichtextDiffCalculator {

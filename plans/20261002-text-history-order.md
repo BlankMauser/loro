@@ -48,8 +48,8 @@ the caller's rule and concatenate.
 - `diff_calc::text_history_runs` (internal) reuses
   `RichtextDiffCalculator::build_full_crdt_tracker`, the same replay a
   checkout from the empty version performs, then checks the tracker out at the
-  oplog version.
-- `TextHandler::history_order` reads the string arena to build the runs,
+  oplog version, and reads each run's text from the tracker's own text table.
+- `TextHandler::history_order` builds the spans from those runs,
   merging neighbours with consecutive ids and equal status, and re-exports
   `TextHistorySpan` from `loro`.
 
