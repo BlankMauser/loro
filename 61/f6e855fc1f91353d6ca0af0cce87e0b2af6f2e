@@ -1,0 +1,20 @@
+crates/loro-internal/src/container/richtext/tracker.rs
+  h_03360edcd9e88f 723
+crates/loro-internal/src/diff_calc.rs
+  h_03360edcd9e88f 1610,1614-1617,1622,1624,1626-1635
+crates/loro-internal/src/handler.rs
+  h_03360edcd9e88f 1654-1655,1662,1664
+plans/20261002-text-history-order.md
+  h_03360edcd9e88f 51-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "61f6e855fc1f91353d6ca0af0cce87e0b2af6f2e",
+  "prompts": {},
+  "humans": {
+    "h_03360edcd9e88f": {
+      "author": "BlankMauser <thomasluvan@gmail.com>"
+    }
+  }
+}
